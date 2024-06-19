@@ -124,7 +124,7 @@ client.on("room.event", async (roomID, event) => {
 	client.setTyping(roomID, true, timeout).catch(() => {});
 
 	console.log(
-		`Generating prompt in ${roomID} with message ${event.content.body} and context ${JSON.stringify(rc)}`,
+		`Generating prompt in ${roomID} with message "${event.content.body}" and context ${JSON.stringify(rc)}`,
 	);
 	const responseJSON = await generate([...rc, newUserMessage]);
 
@@ -152,22 +152,28 @@ client.on("room.event", async (roomID, event) => {
 
 	//send reply
 	if (responseJSON.message.content === "\n\n") {
-		client.sendEvent(roomID, "m.reaction", {
-			"m.relates_to": {
-				event_id: event.event_id,
-				key: "👍",
-				rel_type: "m.annotation",
-			},
-		});
+		client
+			.sendEvent(roomID, "m.reaction", {
+				"m.relates_to": {
+					event_id: event.event_id,
+					key: "👍",
+					rel_type: "m.annotation",
+				},
+			})
+			.catch((e) => console.error(`unable to react in ${roomID}.`));
 	} else if (responseJSON.message.content === "\n\n\n\n") {
-		client.sendEvent(roomID, "m.reaction", {
-			"m.relates_to": {
-				event_id: event.event_id,
-				key: "👎",
-				rel_type: "m.annotation",
-			},
-		});
+		client
+			.sendEvent(roomID, "m.reaction", {
+				"m.relates_to": {
+					event_id: event.event_id,
+					key: "👎",
+					rel_type: "m.annotation",
+				},
+			})
+			.catch((e) => console.error(`unable to react in ${roomID}.`));
 	} else {
-		client.replyText(roomID, event, responseJSON.message.content);
+		client
+			.replyText(roomID, event, responseJSON.message.content)
+			.catch((e) => console.error(`unable to message in ${roomID}.`));
 	}
 });
