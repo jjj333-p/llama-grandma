@@ -117,6 +117,9 @@ client.on("room.event", async (roomID, event) => {
 	//new message
 	const newUserMessage = { role: "user", content: event.content.body };
 
+	//indicate recieved message
+	client.sendReadReceipt(roomID, event.event_id);
+
 	//indicate typing
 	client.setTyping(roomID, true, timeout).catch(() => {});
 
