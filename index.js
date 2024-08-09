@@ -110,9 +110,9 @@ client.on("room.event", async (roomID, event) => {
 		//set new prompt
 		prompt.set(roomID, {
 			role: "system",
-			content: event.content.body.substring(
-				resetCMD.length + 1 /*space after cmd*/,
-			),
+			content:
+				event.content.body.substring(resetCMD.length + 1 /*space after cmd*/) ||
+				loginParsed["default-prompt"], //default
 		});
 
 		//set new context id
