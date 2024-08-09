@@ -127,6 +127,8 @@ client.on("room.event", async (roomID, event) => {
 				},
 			})
 			.catch((e) => console.error(`unable to react in ${roomID}.`));
+
+		return;
 	}
 
 	//get past messages, let id default to roomid if a new context hasnt been created
