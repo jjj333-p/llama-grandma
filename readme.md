@@ -5,3 +5,5 @@ A simple matrix bot that will feed every message to your llama model of choice a
 Requires ollama to already be running on localhost.
 
 Copy `example/db.yaml` to `db/login.yaml` and fill in things
+
+Run `!llama new ?<system prompt>` to clear context and add a new system prompt
