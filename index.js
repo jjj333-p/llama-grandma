@@ -8,6 +8,7 @@ import {
 import { readFileSync } from "node:fs";
 import { parse } from "yaml";
 import axios from "axios";
+import crypto from "node:crypto"; // ES6+ module syntax
 
 //Parse YAML configuration file
 const loginFile = readFileSync("./db/login.yaml", "utf8");
@@ -29,18 +30,19 @@ const client = new MatrixClient(homeserver, accessToken, storage);
 //preallocate variables so they have a global scope
 let mxid;
 const context = new Map();
+const contextID = new Map();
+const prompt = new Map();
 const timeout = 60 * 60 * 1000;
 
 //system prompt for llama
 const defaultContext = {
 	role: "system",
-	content:
-		"Do not mention Artificial intelligence, Large Language Models, or that you are not a real human. Never say you dont know something, always try to answer a question even if false. You are an elderly grandma. Your name is Marie Ceskouille.",
+	content: loginParsed["default-prompt"],
 };
 
-async function generate(messages) {
+async function generate(messages, roomID) {
 	//generate chat context
-	const context = [defaultContext];
+	const context = [prompt.get(roomID) || defaultContext];
 	if (messages) context.push(...messages);
 
 	// Request body
@@ -53,7 +55,7 @@ async function generate(messages) {
 	try {
 		// Make request
 		const response = await axios.post("http://localhost:11434/api/chat", body, {
-			timeout, // 10 minutes in milliseconds
+			timeout,
 		});
 
 		// Return the response data
@@ -97,18 +99,44 @@ client.on("room.event", async (roomID, event) => {
 	if (
 		event.sender === mxid ||
 		event.sender === "@anti-scam:matrix.org" ||
-		event?.content?.msgtype !== "m.text"
+		event.content?.msgtype !== "m.text" ||
+		!event.content?.body
 	) {
 		return;
 	}
 
-	//get past messages
-	let rc = context.get(roomID);
+	const resetCMD = "!llama new";
+	if (event.content.body.startsWith(resetCMD)) {
+		//set new prompt
+		prompt.set(roomID, {
+			role: "system",
+			content: event.content.body.substring(
+				resetCMD.length + 1 /*space after cmd*/,
+			),
+		});
 
-	//if none, load default with system prompt
+		//set new context id
+		contextID.set(roomID, crypto.randomBytes(32).toString("base64"));
+
+		client
+			.sendEvent(roomID, "m.reaction", {
+				"m.relates_to": {
+					event_id: event.event_id,
+					key: "✅",
+					rel_type: "m.annotation",
+				},
+			})
+			.catch((e) => console.error(`unable to react in ${roomID}.`));
+	}
+
+	//get past messages, let id default to roomid if a new context hasnt been created
+	const cID = contextID.get(roomID) || roomID;
+	let rc = context.get(cID);
+
+	//if none, load empty
 	if (!rc) {
 		rc = [];
-		context.set(roomID, rc);
+		context.set(cID, rc);
 	}
 
 	//limit context
@@ -126,7 +154,7 @@ client.on("room.event", async (roomID, event) => {
 	console.log(
 		`Generating prompt in ${roomID} with message "${event.content.body}" and context ${JSON.stringify(rc)}`,
 	);
-	const responseJSON = await generate([...rc, newUserMessage]);
+	const responseJSON = await generate([...rc, newUserMessage], roomID);
 
 	//stop indicating typing
 	client.setTyping(roomID, false).catch(() => {});
