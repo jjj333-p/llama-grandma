@@ -203,7 +203,7 @@ client.on("room.event", async (roomID, event) => {
 			.catch((e) => console.error(`unable to react in ${roomID}.`));
 	} else {
 		client
-			.replyText(roomID, event, responseJSON.message.content)
+			.replyHtmlText(roomID, event, responseJSON.message.content)
 			.catch((e) => console.error(`unable to message in ${roomID}.`));
 	}
 });
