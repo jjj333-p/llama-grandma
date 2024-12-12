@@ -10,8 +10,7 @@ import { parse } from "yaml";
 import axios from "axios";
 import crypto from "node:crypto"; // ES6+ module syntax
 import { remark } from "remark";
-import remarkPresetLintConsistent from "remark-preset-lint-consistent";
-import remarkPresetLintRecommended from "remark-preset-lint-recommended";
+import remarkRehype from "remark-rehype";
 
 //Parse YAML configuration file
 const loginFile = readFileSync("./db/login.yaml", "utf8");
@@ -209,8 +208,9 @@ client.on("room.event", async (roomID, event) => {
 		let parsedResponse;
 		try {
 			parsedResponse = await remark()
-				.use(remarkPresetLintConsistent)
-				.use(remarkPresetLintRecommended)
+				.use(remarkRehype)
+				.use(rehypeSanitize)
+				.use(rehypeStringify)
 				.process(responseJSON.message.content);
 		} catch (e) {
 			parsedResponse = `<h3>Unable to parse</h3>\n<code>${e}</code>\n${responseJSON.message.content}`;
