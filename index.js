@@ -11,6 +11,8 @@ import axios from "axios";
 import crypto from "node:crypto"; // ES6+ module syntax
 import { remark } from "remark";
 import remarkRehype from "remark-rehype";
+import rehypeSanitize from "rehype-sanitize";
+import rehypeStringify from "rehype-stringify";
 
 //Parse YAML configuration file
 const loginFile = readFileSync("./db/login.yaml", "utf8");
@@ -213,11 +215,11 @@ client.on("room.event", async (roomID, event) => {
 				.use(rehypeStringify)
 				.process(responseJSON.message.content);
 		} catch (e) {
-			parsedResponse = `<h3>Unable to parse</h3>\n<code>${e}</code>\n${responseJSON.message.content}`;
+			parsedResponse = `<h3>Unable to parse</h3>\n<code>${e}</code> \n${responseJSON.message.content}`;
 		}
 
 		client
-			.replyHtmlText(roomID, event, responseJSON.message.content)
+			.replyHtmlText(roomID, event, parsedResponse)
 			.catch((e) => console.error(`unable to message in ${roomID}.`));
 	}
 });
