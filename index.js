@@ -9,6 +9,9 @@ import { readFileSync } from "node:fs";
 import { parse } from "yaml";
 import axios from "axios";
 import crypto from "node:crypto"; // ES6+ module syntax
+import { remark } from "remark";
+import remarkPresetLintConsistent from "remark-preset-lint-consistent";
+import remarkPresetLintRecommended from "remark-preset-lint-recommended";
 
 //Parse YAML configuration file
 const loginFile = readFileSync("./db/login.yaml", "utf8");
@@ -202,6 +205,17 @@ client.on("room.event", async (roomID, event) => {
 			})
 			.catch((e) => console.error(`unable to react in ${roomID}.`));
 	} else {
+		//for some reason llama likes to output markdown, matrix does formatting in html
+		let parsedResponse;
+		try {
+			parsedResponse = await remark()
+				.use(remarkPresetLintConsistent)
+				.use(remarkPresetLintRecommended)
+				.process(responseJSON.message.content);
+		} catch (e) {
+			parsedResponse = `<h3>Unable to parse</h3>\n<code>${e}</code>\n${responseJSON.message.content}`;
+		}
+
 		client
 			.replyHtmlText(roomID, event, responseJSON.message.content)
 			.catch((e) => console.error(`unable to message in ${roomID}.`));
