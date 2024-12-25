@@ -4,6 +4,7 @@ import {
 	MatrixClient,
 	SimpleFsStorageProvider,
 	RichRepliesPreprocessor,
+	RichReply,
 } from "matrix-bot-sdk";
 import { readFileSync } from "node:fs";
 import { parse } from "yaml";
@@ -219,7 +220,15 @@ client.on("room.event", async (roomID, event) => {
 		}
 
 		client
-			.replyHtmlText(roomID, event, parsedResponse)
+			.sendMessage(
+				roomID,
+				RichReply.createFor(
+					roomID,
+					event,
+					responseJSON.message.content,
+					parsedResponse,
+				),
+			)
 			.catch((e) => console.error(`unable to message in ${roomID}.`));
 	}
 });
