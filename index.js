@@ -45,11 +45,7 @@ const defaultContext = {
 	content: loginParsed["default-prompt"],
 };
 
-async function generate(messages, roomID) {
-	//generate chat context
-	const context = [prompt.get(roomID) || defaultContext];
-	if (messages) context.push(...messages);
-
+async function generate(context, roomID) {
 	// Request body
 	const body = {
 		model,
@@ -145,7 +141,7 @@ client.on("room.event", async (roomID, event) => {
 
 	//if none, load empty
 	if (!rc) {
-		rc = [];
+		rc = [prompt.get(roomID) || defaultContext];
 		context.set(cID, rc);
 	}
 
