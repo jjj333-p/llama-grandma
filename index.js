@@ -98,6 +98,9 @@ client.start(filter).then(async (filter) => {
 	mxid = await client.getUserId().catch(() => {});
 });
 
+//use an await as a mutex, because js is single threaded
+let generationMutex;
+
 //when the client recieves an event
 client.on("room.event", async (roomID, event) => {
 	//ignore events sent by self, unless its a banlist policy update
@@ -158,13 +161,20 @@ client.on("room.event", async (roomID, event) => {
 	//indicate typing
 	client.setTyping(roomID, true, timeout).catch(() => {});
 
+	//create a new item in the mutex queue
+	const lastMutex = generationMutex;
+	let unlock;
+	generationMutex = new Promise((resolve) => {
+		unlock = resolve;
+	});
+
+	//await last job completing
+	await lastMutex;
+
 	console.log(
 		`Generating prompt in ${roomID} with message "${event.content.body}" and context ${JSON.stringify(rc)}`,
 	);
 	const responseJSON = await generate([...rc, newUserMessage], roomID);
-
-	//stop indicating typing
-	client.setTyping(roomID, false).catch(() => {});
 
 	//no response
 	if (!responseJSON) return console.error("empty response returned from LLM.");
@@ -184,6 +194,12 @@ client.on("room.event", async (roomID, event) => {
 
 	//add response to context
 	rc.push(responseJSON.message);
+
+	//unlock the mutex
+	unlock();
+
+	//stop indicating typing
+	client.setTyping(roomID, false).catch(() => {});
 
 	//send reply
 	if (responseJSON.message.content === "\n\n") {
