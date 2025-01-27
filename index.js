@@ -155,7 +155,6 @@ client.on("room.event", async (roomID, event) => {
 	client.sendReadReceipt(roomID, event.event_id);
 
 	//indicate typing
-	client.setTyping(roomID, true, timeout).catch(() => {});
 
 	//create a new item in the mutex queue
 	const lastMutex = generationMutex;
@@ -166,6 +165,8 @@ client.on("room.event", async (roomID, event) => {
 
 	//await last job completing
 	await lastMutex;
+
+	client.setTyping(roomID, true, timeout).catch(() => {});
 
 	console.log(
 		`Generating prompt in ${roomID} with message "${event.content.body}" and context ${JSON.stringify(rc)}`,
