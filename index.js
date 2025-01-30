@@ -252,7 +252,7 @@ client.on("room.event", async (roomID, event) => {
 	if (rc.length > 30) rc.shift();
 
 	//add response to context
-	rc.push({ role: "system", content: res });
+	rc.push({ role: "assistant", content: res });
 
 	//stop indicating typing
 	client.setTyping(roomID, false).catch(() => {});
