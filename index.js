@@ -173,11 +173,6 @@ client.on("room.event", async (roomID, event) => {
 		lastres = res;
 
 		//parse out "thinking" process to colapse
-		// const wres = res
-		// 	.split("<think>")
-		// 	.join("<details> <summary>Thought Process</summary> ")
-		// 	.split("</think>")
-		// 	.join("</details>");
 		const resparts = res.split("</think>");
 		const think = resparts[0]
 			.split("<think>")
