@@ -45,7 +45,7 @@ const defaultContext = {
 	content: loginParsed["default-prompt"],
 };
 
-async function generate(context, roomID) {
+async function generate(context, write) {
 	// Request body
 	const body = {
 		model,
@@ -54,15 +54,47 @@ async function generate(context, roomID) {
 	};
 
 	try {
-		// Make request
-		const response = await axios.post("http://localhost:11434/api/chat", body, {
-			timeout,
+		//make http streaming request
+		const response = await fetch("http://localhost:11434/api/chat", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify(body),
 		});
 
-		// Return the response data
-		return response.data;
+		if (!response.ok) {
+			write(`\n\nHTTP error! status: ${response.status}`);
+			return;
+		}
+
+		// Handle streaming response
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder("utf-8");
+
+		while (true) {
+			//read data
+			const { reqDone, value } = await reader.read();
+			if (reqDone) {
+				return;
+			}
+
+			//parse response
+			let chunk;
+			try {
+				chunk = JSON.parse(decoder.decode(value, { stream: true }));
+			} catch (_e) {
+				return;
+			}
+
+			if (chunk?.message?.content) {
+				write(chunk.message.content);
+			} else {
+				return;
+			}
+		}
 	} catch (error) {
-		console.error("Error fetching data:", error);
+		write("\n\nError:", error.message);
 	}
 }
 
@@ -171,7 +203,73 @@ client.on("room.event", async (roomID, event) => {
 	console.log(
 		`Generating prompt in ${roomID} with message "${event.content.body}" and context ${JSON.stringify(rc)}`,
 	);
-	const responseJSON = await generate([...rc, newUserMessage], roomID);
+
+	//metadata about generation completion
+	let res = "";
+	let awaitReplyID;
+	let done = false;
+	let lastres = "";
+	const loop = setInterval(async () => {
+		//tidy up
+		if (done) clearInterval(loop);
+		if (res === lastres) return;
+		lastres = res;
+
+		//parse out "thinking" process to colapse
+		const wres = res
+			.split("<think>")
+			.join("<details> <summary>Thought Process</summary> ")
+			.split("</think>")
+			.join("</details>");
+
+		//for some reason llama likes to output markdown, matrix does formatting in html
+		let parsedResponse;
+		try {
+			parsedResponse = await remark()
+				.use(remarkRehype)
+				.use(rehypeSanitize)
+				.use(rehypeStringify)
+				.process(res);
+		} catch (e) {
+			parsedResponse = `<h3>Unable to parse</h3>\n<code>${e}</code> \n${res}`;
+		}
+
+		//define once
+		const content = {
+			body: res,
+			format: "org.matrix.custom.html",
+			formatted_body: parsedResponse,
+			"m.mentions": { user_ids: [event.sender] },
+			msgtype: "m.text",
+		};
+
+		//first event is a normal event
+		if (!awaitReplyID) {
+			awaitReplyID = client.sendMessage(roomID, content).catch(() => {});
+		} else {
+			//we need an id to reply to
+			const replyID = await awaitReplyID;
+			if (!replyID) return;
+
+			//put the new content where it needs to go
+			client
+				.sendMessage(roomID, {
+					...content,
+					"m.new_content": content,
+					"m.relates_to": {
+						event_id: replyID,
+						rel_type: "m.replace",
+					},
+				})
+				.catch(() => {});
+		}
+	}, 1000);
+
+	await generate([...rc, newUserMessage], (addtlTXT) => {
+		res += addtlTXT;
+	});
+
+	done = true;
 
 	//no response
 	if (!responseJSON) return console.error("empty response returned from LLM.");
@@ -192,56 +290,9 @@ client.on("room.event", async (roomID, event) => {
 	//add response to context
 	rc.push(responseJSON.message);
 
-	//unlock the mutex
-	unlock();
-
 	//stop indicating typing
 	client.setTyping(roomID, false).catch(() => {});
 
-	//send reply
-	if (responseJSON.message.content === "\n\n") {
-		client
-			.sendEvent(roomID, "m.reaction", {
-				"m.relates_to": {
-					event_id: event.event_id,
-					key: "👍",
-					rel_type: "m.annotation",
-				},
-			})
-			.catch((e) => console.error(`unable to react in ${roomID}.`));
-	} else if (responseJSON.message.content === "\n\n\n\n") {
-		client
-			.sendEvent(roomID, "m.reaction", {
-				"m.relates_to": {
-					event_id: event.event_id,
-					key: "👎",
-					rel_type: "m.annotation",
-				},
-			})
-			.catch((e) => console.error(`unable to react in ${roomID}.`));
-	} else {
-		//for some reason llama likes to output markdown, matrix does formatting in html
-		let parsedResponse;
-		try {
-			parsedResponse = await remark()
-				.use(remarkRehype)
-				.use(rehypeSanitize)
-				.use(rehypeStringify)
-				.process(responseJSON.message.content);
-		} catch (e) {
-			parsedResponse = `<h3>Unable to parse</h3>\n<code>${e}</code> \n${responseJSON.message.content}`;
-		}
-
-		client
-			.sendMessage(
-				roomID,
-				RichReply.createFor(
-					roomID,
-					event,
-					responseJSON.message.content,
-					parsedResponse,
-				),
-			)
-			.catch((e) => console.error(`unable to message in ${roomID}.`));
-	}
+	//unlock the mutex
+	unlock();
 });
