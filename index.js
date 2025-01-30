@@ -194,7 +194,6 @@ client.on("room.event", async (roomID, event) => {
 			body: res,
 			format: "org.matrix.custom.html",
 			formatted_body: parsedResponse,
-			"m.mentions": { user_ids: [event.sender] },
 			msgtype: "m.text",
 		};
 		const replyto = {
@@ -207,6 +206,7 @@ client.on("room.event", async (roomID, event) => {
 				.sendMessage(roomID, {
 					...content,
 					"m.relates_to": replyto,
+					"m.mentions": { user_ids: [event.sender] },
 				})
 				.catch(() => {});
 		} else {
@@ -227,7 +227,7 @@ client.on("room.event", async (roomID, event) => {
 				})
 				.catch(() => {});
 		}
-	}, 1000);
+	}, 2000);
 
 	// await generate([...rc, newUserMessage], (addtlTXT) => {
 	// 	res += addtlTXT;
