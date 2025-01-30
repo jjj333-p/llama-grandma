@@ -201,7 +201,7 @@ client.on("room.event", async (roomID, event) => {
 			awaitReplyID = client
 				.sendMessage(roomID, {
 					...content,
-					"m.in_reply_to": { event_id: event.event_id },
+					"m.relates_to": { "m.in_reply_to": { event_id: event.event_id } },
 				})
 				.catch(() => {});
 		} else {
