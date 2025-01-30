@@ -229,7 +229,7 @@ client.on("room.event", async (roomID, event) => {
 	});
 
 	for await (const part of ollamaRES) {
-		res += part;
+		if (part?.message?.content) res += part.message.content;
 	}
 
 	done = true;
