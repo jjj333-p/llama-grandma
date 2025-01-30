@@ -55,7 +55,7 @@ async function generate(context, write) {
 
 	try {
 		//make http streaming request
-		const response = await fetch("http://localhost:11434/api/chat", {
+		const response = await fetch("http://localhost:11434/api/generate", {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
