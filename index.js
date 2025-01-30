@@ -195,13 +195,16 @@ client.on("room.event", async (roomID, event) => {
 			"m.mentions": { user_ids: [event.sender] },
 			msgtype: "m.text",
 		};
+		const replyto = {
+			"m.in_reply_to": { event_id: event.event_id },
+		};
 
 		//first event is a normal event
 		if (!awaitReplyID) {
 			awaitReplyID = client
 				.sendMessage(roomID, {
 					...content,
-					"m.relates_to": { "m.in_reply_to": { event_id: event.event_id } },
+					"m.relates_to": replyto,
 				})
 				.catch(() => {});
 		} else {
@@ -217,6 +220,7 @@ client.on("room.event", async (roomID, event) => {
 					"m.relates_to": {
 						event_id: replyID,
 						rel_type: "m.replace",
+						"m.relates_to": replyto,
 					},
 				})
 				.catch(() => {});
