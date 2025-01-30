@@ -174,11 +174,10 @@ client.on("room.event", async (roomID, event) => {
 
 		//parse out "thinking" process to colapse
 		const resparts = res.split("</think>");
-		const think = resparts[0]
-			.split("<think>")
-			.join("")
-			.split("\n")
-			.join("\n> ");
+		let think;
+		if (resparts.length > 1)
+			think = resparts[0].split("<think>").join("").split("\n").join("\n> ");
+		else think = "";
 		const respParts = resparts.slice(1);
 		const wres = [think, ...respParts].join("");
 
