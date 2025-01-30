@@ -198,7 +198,12 @@ client.on("room.event", async (roomID, event) => {
 
 		//first event is a normal event
 		if (!awaitReplyID) {
-			awaitReplyID = client.sendMessage(roomID, content).catch(() => {});
+			awaitReplyID = client
+				.sendMessage(roomID, {
+					...content,
+					"m.in_reply_to": { event_id: event.event_id },
+				})
+				.catch(() => {});
 		} else {
 			//we need an id to reply to
 			const replyID = await awaitReplyID;
