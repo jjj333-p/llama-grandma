@@ -17,6 +17,10 @@ import { remark } from "remark";
 import remarkRehype from "remark-rehype";
 import rehypeSanitize from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
+const mdProcessor = remark()
+	.use(remarkRehype)
+	.use(rehypeSanitize)
+	.use(rehypeStringify);
 
 //ollama api handled for me
 import ollama from "ollama";
@@ -178,13 +182,9 @@ client.on("room.event", async (roomID, event) => {
 		//for some reason llama likes to output markdown, matrix does formatting in html
 		let parsedResponse;
 		try {
-			parsedResponse = await remark()
-				.use(remarkRehype)
-				.use(rehypeSanitize)
-				.use(rehypeStringify)
-				.process(res);
+			parsedResponse = await mdProcessor.process(wres);
 		} catch (e) {
-			parsedResponse = `<h3>Unable to parse</h3>\n<code>${e}</code> \n${res}`;
+			parsedResponse = `<h3>Unable to parse</h3>\n<code>${e}</code> \n${wres}`;
 		}
 
 		//define once
