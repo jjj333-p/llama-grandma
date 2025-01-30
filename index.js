@@ -182,7 +182,7 @@ client.on("room.event", async (roomID, event) => {
 		//for some reason llama likes to output markdown, matrix does formatting in html
 		let parsedResponse;
 		try {
-			parsedResponse = await mdProcessor.process(wres);
+			parsedResponse = (await mdProcessor.process(wres)).value;
 		} catch (e) {
 			parsedResponse = `<h3>Unable to parse</h3>\n<code>${e}</code> \n${wres}`;
 		}
