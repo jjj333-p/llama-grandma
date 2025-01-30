@@ -1,4 +1,4 @@
-//Import dependencies
+//Matrix dependencies
 import {
 	// AutojoinRoomsMixin,
 	MatrixClient,
@@ -6,14 +6,20 @@ import {
 	RichRepliesPreprocessor,
 	RichReply,
 } from "matrix-bot-sdk";
+
+//node dependencies
 import { readFileSync } from "node:fs";
 import { parse } from "yaml";
-import axios from "axios";
 import crypto from "node:crypto"; // ES6+ module syntax
+
+//markdown parcing
 import { remark } from "remark";
 import remarkRehype from "remark-rehype";
 import rehypeSanitize from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
+
+//ollama api handled for me
+import ollama from "ollama";
 
 //Parse YAML configuration file
 const loginFile = readFileSync("./db/login.yaml", "utf8");
@@ -44,59 +50,6 @@ const defaultContext = {
 	role: "system",
 	content: loginParsed["default-prompt"],
 };
-
-async function generate(context, write) {
-	// Request body
-	const body = {
-		model,
-		messages: context,
-		stream: false,
-	};
-
-	try {
-		//make http streaming request
-		const response = await fetch("http://localhost:11434/api/generate", {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify(body),
-		});
-
-		if (!response.ok) {
-			write(`\n\nHTTP error! status: ${response.status}`);
-			return;
-		}
-
-		// Handle streaming response
-		const reader = response.body.getReader();
-		const decoder = new TextDecoder("utf-8");
-
-		while (true) {
-			//read data
-			const { reqDone, value } = await reader.read();
-			if (reqDone) {
-				return;
-			}
-
-			//parse response
-			let chunk;
-			try {
-				chunk = JSON.parse(decoder.decode(value, { stream: true }));
-			} catch (_e) {
-				return;
-			}
-
-			if (chunk?.message?.content) {
-				write(chunk.message.content);
-			} else {
-				return;
-			}
-		}
-	} catch (error) {
-		write("\n\nError:", error.message);
-	}
-}
 
 const filter = {
 	//dont expect any presence from m.org, but in the case presence shows up its irrelevant to this bot
@@ -265,9 +218,19 @@ client.on("room.event", async (roomID, event) => {
 		}
 	}, 1000);
 
-	await generate([...rc, newUserMessage], (addtlTXT) => {
-		res += addtlTXT;
+	// await generate([...rc, newUserMessage], (addtlTXT) => {
+	// 	res += addtlTXT;
+	// });
+
+	const ollamaRES = await ollama.chat({
+		model,
+		messages: [...rc, newUserMessage],
+		stream: true,
 	});
+
+	for await (const part of ollamaRES) {
+		res += part;
+	}
 
 	done = true;
 
