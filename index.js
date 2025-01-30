@@ -271,16 +271,6 @@ client.on("room.event", async (roomID, event) => {
 
 	done = true;
 
-	//no response
-	if (!responseJSON) return console.error("empty response returned from LLM.");
-
-	//error response
-	if (responseJSON.error) return console.error(responseJSON.error);
-
-	//broken response
-	if (!responseJSON.message?.content)
-		return console.error("No message returned in response from LLM.");
-
 	//push new message
 	rc.push(newUserMessage);
 
