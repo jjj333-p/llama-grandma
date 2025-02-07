@@ -173,13 +173,15 @@ client.on("room.event", async (roomID, event) => {
 		lastres = res;
 
 		//parse out "thinking" process to colapse
-		const resparts = res.split("</think>");
+		let resparts = res.split("</think>");
 		let think;
-		if (resparts.length > 1)
+		if (resparts.length > 1) {
 			think = resparts[0].split("<think>").join("").split("\n").join("\n> ");
-		else think = "";
-		const respParts = resparts.slice(1);
-		const wres = [think, ...respParts].join("");
+			resparts = resparts.slice(1);
+		} else {
+			think = "";
+		}
+		const wres = [think, ...resparts].join("");
 
 		//for some reason llama likes to output markdown, matrix does formatting in html
 		let parsedResponse;
